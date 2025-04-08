@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure Session</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="number-picker.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 flex justify-center items-center min-h-screen">
+    <main class="p-6 text-center relative">
+        <button onclick="window.location.href='index.html'" class="absolute top-0 right-0 text-gray-400 hover:text-gray-200 text-xl font-bold px-4 py-2">
+            ×
+        </button>
+        <h1 class="text-3xl font-bold mb-4">Configure Training Session</h1>
+        <form id="session-form" class="bg-gray-800 p-4 rounded-lg shadow-md space-y-4">
+            <div>
+                <input type="text" id="session-name" class="w-full p-2 rounded bg-gray-700 text-gray-100" placeholder="Enter session name" required>
+            </div>
+            <div id="series-container" class="space-y-4">
+                <!-- Series will be dynamically added here -->
+            </div>
+            <button type="button" id="add-serie-btn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Add Training Serie
+            </button>
+            <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                Save Session
+            </button>
+        </form>
+    </main>
+    <script>
+        // Utility function to generate a GUID
+        function generateGUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Load session data from local storage
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('id');
+            const sessionForm = document.getElementById('session-form');
+            const sessionNameInput = document.getElementById('session-name');
+            const seriesContainer = document.getElementById('series-container');
+            let sessionData = { id: sessionId || generateGUID(), name: '', series: [] };
+
+            if (sessionId) {
+                const savedSessions = JSON.parse(localStorage.getItem('workoutSessions')) || [];
+                const existingSession = savedSessions.find(session => session.id === sessionId);
+                if (existingSession) {
+                    sessionData = existingSession;
+                    sessionNameInput.value = sessionData.name;
+                    sessionData.series.forEach((serie, index) => addSerieToForm(serie, index));
+                }
+            }
+
+            // Add a training serie to the form
+            function addSerieToForm(serie, index) {
+                const serieDiv = document.createElement('div');
+                serieDiv.className = 'bg-gray-700 p-4 rounded space-y-2 relative';
+                serieDiv.innerHTML = `
+                    <div class="flex justify-end mb-2">
+                        <button type="button" class="delete-btn text-red-500 hover:text-red-400 font-bold text-xl">×</button>
+                    </div>
+                    <input type="number" class="w-full p-2 rounded bg-gray-600 text-gray-100" placeholder="Exercise" value="${serie?.exercise}" data-serie-exercise min="3">
+                    <input type="number" class="w-full p-2 rounded bg-gray-600 text-gray-100" placeholder="Exercise Rest" value="${serie?.rest}" data-serie-rest min="3">
+                    <input type="number" class="w-full p-2 rounded bg-gray-600 text-gray-100" placeholder="Reps" value="${serie?.reps}" data-serie-reps min="1">
+
+                    <label class="block text-center font-semibold">Rest</label>
+                    <input type="number" class="w-full p-2 rounded bg-gray-600 text-gray-100" placeholder="After Rest" value="${serie?.afterRest ?? 60}" data-serie-after-rest min="4">
+                    <button type="button" class="clone-btn px-2 py-1 bg-blue-600 rounded hover:bg-blue-700">Clone To Bottom</button>
+                `;
+                
+                seriesContainer.appendChild(serieDiv);
+
+
+                // Add clone functionality
+                serieDiv.querySelector('.clone-btn').addEventListener('click', () => {
+                    const serieData = {
+                        exercise: serieDiv.querySelector('[data-serie-exercise]').value,
+                        rest: serieDiv.querySelector('[data-serie-rest]').value,
+                        reps: serieDiv.querySelector('[data-serie-reps]').value,
+                        afterRest: serieDiv.querySelector('[data-serie-after-rest]').value
+                    };
+                    addSerieToForm(serieData, seriesContainer.children.length);
+                });
+
+                // Add delete functionality
+                serieDiv.querySelector('.delete-btn').addEventListener('click', () => {
+                    if (seriesContainer.children.length > 1) {
+                        serieDiv.remove();
+                    } else {
+                        alert('You must have at least one serie!');
+                    }
+                });
+            }
+
+            // Handle adding a new serie
+            document.getElementById('add-serie-btn').addEventListener('click', () => {
+                addSerieToForm({}, 0);
+            });
+
+            // Handle form submission
+            sessionForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                sessionData.name = sessionNameInput.value;
+                sessionData.series = Array.from(seriesContainer.children).map(serieDiv => ({
+                    exercise: serieDiv.querySelector('[data-serie-exercise]').value,
+                    rest: serieDiv.querySelector('[data-serie-rest]').value,
+                    reps: serieDiv.querySelector('[data-serie-reps]').value,
+                    afterRest: serieDiv.querySelector('[data-serie-after-rest]').value
+                }));
+
+                const savedSessions = JSON.parse(localStorage.getItem('workoutSessions')) || [];
+                const existingIndex = savedSessions.findIndex(session => session.id === sessionData.id);
+                if (existingIndex > -1) {
+                    savedSessions[existingIndex] = sessionData;
+                } else {
+                    savedSessions.push(sessionData);
+                }
+                localStorage.setItem('workoutSessions', JSON.stringify(savedSessions));
+                alert('Session saved successfully!');
+                window.location.href = 'index.html';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Session</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            transition: background-color 0.5s ease;
+        }
+        .phase-exercise {
+            background-color: rgba(239, 68, 68, 0.8)!important;
+        }
+        .phase-rest {
+            background-color: rgba(34, 197, 94, 0.8)!important;
+        }
+        .phase-prepare {
+            background-color: rgba(234, 179, 8, 0.8)!important;
+        }
+        .phase-afterRest {
+            background-color: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex justify-center items-center min-h-screen">
+    <main class="p-6 text-center w-full max-w-2xl relative">
+        <button onclick="window.location.href='index.html'" class="absolute top-0 right-0 text-gray-400 hover:text-gray-200 text-xl font-bold px-4 py-2">
+            ×
+        </button>
+        <h1 id="session-name" class="text-3xl font-bold mb-4">Session Name</h1>
+        
+        <div class="bg-gray-800 p-6 rounded-lg shadow-md space-y-4">
+            <div class="text-6xl font-mono font-bold" id="timer">00:00</div>
+            
+            <div class="text-2xl font-semibold" id="current-phase">Ready to start</div>
+            
+            <div id="reps-display" class="text-xl text-gray-300 hidden">
+                Rep <span id="current-rep">0</span>/<span id="total-reps">0</span>
+            </div>
+            
+            <div class="text-gray-400">
+                Next: <span id="next-phase">-</span>
+            </div>
+
+            <div class="space-x-4">
+                <button id="start-btn" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    Start
+                </button>
+                <button id="pause-btn" class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 hidden">
+                    Pause
+                </button>
+                <button id="stop-btn" class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 hidden">
+                    Stop
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let a = new AudioContext()
+        function beep(w,x,y){
+            console.log("Gain:"+w, "Hz:"+x, "ms:"+y)
+            v = a.createOscillator()
+            u = a.createGain()
+            v.connect(u)
+            v.frequency.value = x
+            v.type = "square"
+            u.connect(a.destination)
+            u.gain.value = w * 0.01
+            v.start(a.currentTime)
+            v.stop(a.currentTime + y *0.001)
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('id');
+            let sessionData;
+            let currentSerieIndex = 0;
+            let currentPhase = 'prepare'; // 'prepare', 'exercise', 'rest', or 'afterRest'
+            let timeLeft = 0;
+            let timerInterval;
+            let isPaused = false;
+            const PREPARE_TIME = 3; // 3 seconds preparation
+            let currentRep = 1;
+
+            // Load session data
+            const savedSessions = JSON.parse(localStorage.getItem('workoutSessions')) || [];
+            sessionData = savedSessions.find(session => session.id === sessionId);
+            if (!sessionData) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            document.getElementById('session-name').textContent = sessionData.name;
+
+            function formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            function updateBackgroundColor() {
+                document.body.classList.remove('phase-exercise', 'phase-rest', 'phase-prepare', 'phase-afterRest');
+                document.body.classList.add(`phase-${currentPhase}`);
+            }
+
+            function updateDisplay() {
+                const timerDisplay = document.getElementById('timer');
+                const currentPhaseDisplay = document.getElementById('current-phase');
+                const nextPhaseDisplay = document.getElementById('next-phase');
+                const repsDisplay = document.getElementById('reps-display');
+                const currentRepDisplay = document.getElementById('current-rep');
+                const totalRepsDisplay = document.getElementById('total-reps');
+
+                timerDisplay.textContent = formatTime(timeLeft);
+
+                const currentSerie = sessionData.series[currentSerieIndex];
+                if (currentPhase === 'prepare') {
+                    currentPhaseDisplay.textContent = `Get Ready! ${timeLeft}`;
+                    if (timeLeft < 3 && timeLeft >= 0) {
+                        beep(500, 2000, 100); // Countdown beep
+                    }
+                    nextPhaseDisplay.textContent = 'Rep 1/' + sessionData.series[currentSerieIndex].reps;
+                } else if (currentPhase === 'exercise') {
+                    currentPhaseDisplay.textContent = `Rep ${currentRep}/${sessionData.series[currentSerieIndex].reps}`;
+                    nextPhaseDisplay.textContent = 'Rep Rest';
+                    currentRepDisplay.textContent = currentRep;
+                    totalRepsDisplay.textContent = currentSerie.reps;
+                    if (timeLeft < 3 && timeLeft >= 0) {
+                        beep(500, 4000, 100); // Countdown beep
+                    }
+                } else if (currentPhase === 'rest') {
+                    currentPhaseDisplay.textContent = 'Rep Rest';
+                    nextPhaseDisplay.textContent = `Rep ${currentRep + 1}/${currentSerie.reps}`;
+                    if (timeLeft < 3 && timeLeft >= 0) {
+                        beep(500, 2000, 100); // Countdown beep
+                    }
+                } else if (currentPhase === 'afterRest') {
+                    currentPhaseDisplay.textContent = 'Between Serie Rest';
+                    nextPhaseDisplay.textContent = `Serie ${currentSerieIndex + 2}`;
+                }
+                updateBackgroundColor();
+            }
+
+            function validateSession(sessionData) {
+                for (let i = 0; i < sessionData.series.length; i++) {
+                    const serie = sessionData.series[i];
+                    if (!serie.exercise || parseInt(serie.exercise) <= 0) {
+                        throw new Error(`Serie ${i + 1}: Exercise time must be greater than 0`);
+                    }   
+                    if (!serie.rest || parseInt(serie.rest) <= 0) {
+                        throw new Error(`Serie ${i + 1}: Rest time must be greater than 0`);
+                    }
+                    if (!serie.reps || parseInt(serie.reps) <= 0) {
+                        throw new Error(`Serie ${i + 1}: Repetitions must be greater than 0`);
+                    }
+                    if (!serie.afterRest || parseInt(serie.afterRest) <= 0) {
+                        throw new Error(`Serie ${i + 1}: After rest time must be greater than 0`);
+                    }
+                }
+            }
+
+            function handleError(error) {
+                alert(`Configuration error: ${error.message}\n\nRedirecting to edit page...`);
+                window.location.href = `session-edit.html?id=${sessionId}`;
+            }
+
+            // Validate session data before starting
+            try {
+                validateSession(sessionData);
+            } catch (error) {
+                handleError(error);
+                return;
+            }
+
+            function startTimer() {
+                if (isPaused) {
+                    isPaused = false;
+                } else {
+                    currentSerieIndex = 0;
+                    currentPhase = 'prepare';
+                    timeLeft = PREPARE_TIME;
+                    currentRep = 1;
+                }
+
+                document.getElementById('start-btn').classList.add('hidden');
+                document.getElementById('pause-btn').classList.remove('hidden');
+                document.getElementById('stop-btn').classList.remove('hidden');
+
+                timerInterval = setInterval(() => {
+                    try {
+                        if (timeLeft > 0) {
+                            timeLeft--;
+                            updateDisplay();
+                        } else {
+                            if (currentPhase === 'prepare') {
+                                beep(700, 2500, 400); // Start signal
+                                currentPhase = 'exercise';
+                                timeLeft = parseInt(sessionData.series[currentSerieIndex].exercise - 1);
+    
+                                currentRep = 1;
+                            } else if (currentPhase === 'exercise') {
+                                beep(700, 4000, 400); // Start signal
+                                if (currentSerieIndex >= sessionData.series.length-1 && currentRep >= sessionData.series[currentSerieIndex].reps) {
+                                    clearInterval(timerInterval);
+                                    beep(700, 1000, 1000); // Start signal
+                                    alert('Workout complete!');
+                                    window.location.href = 'index.html';
+                                    return;
+                                }
+                                if(currentRep >= sessionData.series[currentSerieIndex].reps) {
+                                    currentPhase = 'afterRest';
+                                    timeLeft = parseInt(sessionData.series[currentSerieIndex].afterRest - 3);
+                                } else {
+                                    currentPhase = 'rest';
+                                    timeLeft = parseInt(sessionData.series[currentSerieIndex].rest - 1);
+                                }
+                            } else if (currentPhase === 'rest') {
+                                beep(700, 4000, 400); // Start signal
+                                const currentReps = parseInt(sessionData.series[currentSerieIndex].reps);
+                                
+                                if (currentRep < currentReps) {
+                                    currentRep++;
+                                    currentPhase = 'exercise';
+                                    timeLeft = parseInt(sessionData.series[currentSerieIndex].exercise - 1);
+                                } else {
+                                    clearInterval(timerInterval);
+                                    beep(700, 1000, 1000); // Start signal
+                                    alert('Workout complete!');
+                                    window.location.href = 'index.html';
+                                    return;
+                                }
+                            } else if (currentPhase === 'afterRest') {
+                                currentSerieIndex++;
+                                currentPhase = 'prepare';
+                                timeLeft = PREPARE_TIME;
+                            }
+                            updateDisplay();
+                        }
+                    } catch (error) {
+                        clearInterval(timerInterval);
+                        handleError(error);
+                    }
+                }, 1000);
+            }
+
+            document.getElementById('start-btn').addEventListener('click', startTimer);
+            document.getElementById('pause-btn').addEventListener('click', () => {
+                clearInterval(timerInterval);
+                isPaused = true;
+                document.getElementById('start-btn').classList.remove('hidden');
+                document.getElementById('pause-btn').classList.add('hidden');
+            });
+            document.getElementById('stop-btn').addEventListener('click', () => {
+                if (confirm('Are you sure you want to stop the session?')) {
+                    clearInterval(timerInterval);
+                    window.location.href = 'index.html';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
