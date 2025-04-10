@@ -58,9 +58,25 @@
     </main>
 
     <script>
-        let a = new AudioContext()
+        // The wake lock sentinel.
+        let wakeLock = null;
+        
+        // Function that attempts to request a screen wake lock.
+        const requestWakeLock = async () => {
+          try {
+            wakeLock = await navigator.wakeLock.request();
+            wakeLock.addEventListener('release', () => {
+              console.log('Screen Wake Lock released:', wakeLock.released);
+            });
+            console.log('Screen Wake Lock released:', wakeLock.released);
+          } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+          }
+        };
+        
+        const a = new AudioContext();
+
         function beep(w,x,y){
-            console.log("Gain:"+w, "Hz:"+x, "ms:"+y)
             v = a.createOscillator()
             u = a.createGain()
             v.connect(u)
@@ -175,6 +191,9 @@
             }
 
             function startTimer() {
+                
+                requestWakeLock();
+                
                 if (isPaused) {
                     isPaused = false;
                 } else {
@@ -229,6 +248,8 @@
                                     beep(700, 1000, 1000); // Start signal
                                     alert('Workout complete!');
                                     window.location.href = 'index.html';
+                                    wakeLock?.release();
+                                    wakeLock = null;
                                     return;
                                 }
                             } else if (currentPhase === 'afterRest') {
@@ -241,6 +262,8 @@
                     } catch (error) {
                         clearInterval(timerInterval);
                         handleError(error);
+                        wakeLock?.release();
+                        wakeLock = null;
                     }
                 }, 1000);
             }
@@ -251,11 +274,15 @@
                 isPaused = true;
                 document.getElementById('start-btn').classList.remove('hidden');
                 document.getElementById('pause-btn').classList.add('hidden');
+                wakeLock?.release();
+                wakeLock = null;
             });
             document.getElementById('stop-btn').addEventListener('click', () => {
                 if (confirm('Are you sure you want to stop the session?')) {
                     clearInterval(timerInterval);
                     window.location.href = 'index.html';
+                    wakeLock?.release();
+                    wakeLock = null;
                 }
             });
         });
