@@ -9,7 +9,7 @@
 </head>
 <body class="bg-gray-900 text-gray-100 flex flex-col min-h-screen">
     <header class="w-full bg-gray-800 p-4 flex justify-between items-center">
-        <h2 id="session-name" class="text-2xl text-center flex-grow">Configure session</h2>
+        <h2 id="page-title" class="text-2xl text-center flex-grow">Configure session</h2>
         <button onclick="window.location.href='index.html'" class="text-gray-400 hover:text-gray-200 text-xl font-bold px-4 py-2">
             ×
         </button>
@@ -17,7 +17,7 @@
     <main class="p-6 text-center relative">
         <form id="session-form" class="bg-gray-800 p-4 rounded-lg shadow-md space-y-4">
             <div>
-                <input type="text" id="session-name" class="w-full p-2 rounded bg-gray-700 text-gray-100" placeholder="Enter session name" required>
+                <input type="text" id="session-name-input" class="w-full p-2 rounded bg-gray-700 text-gray-100" placeholder="Enter session name" required>
             </div>
             <div id="series-container" class="space-y-4">
                 <!-- Series will be dynamically added here -->
@@ -44,7 +44,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const sessionId = urlParams.get('id');
             const sessionForm = document.getElementById('session-form');
-            const sessionNameInput = document.getElementById('session-name');
+            const sessionNameInput = document.getElementById('session-name-input');
             const seriesContainer = document.getElementById('series-container');
             let sessionData = { id: sessionId || generateGUID(), name: '', series: [] };
 
@@ -54,6 +54,7 @@
                 if (existingSession) {
                     sessionData = existingSession;
                     sessionNameInput.value = sessionData.name;
+                    document.getElementById('page-title').textContent = 'Edit: ' + sessionData.name;
                     sessionData.series.forEach((serie, index) => addSerieToForm(serie, index));
                 }
             }
@@ -134,7 +135,6 @@
                     savedSessions.push(sessionData);
                 }
                 localStorage.setItem('workoutSessions', JSON.stringify(savedSessions));
-                alert('Session saved successfully!');
                 window.location.href = 'index.html';
             });
         });

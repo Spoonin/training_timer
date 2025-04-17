@@ -55,7 +55,7 @@
                     const sessionName = document.createElement('span');
                     sessionName.textContent = session.name;
                     sessionName.className = 'cursor-pointer flex-grow';
-                    sessionName.addEventListener('click', () => {
+                    listItem.addEventListener('click', () => {
                         window.location.href = `session.html?id=${session.id}`;
                     });
 

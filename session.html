@@ -24,7 +24,7 @@
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 flex flex-col min-h-screen">
-    <header class="w-full bg-gray-800 p-4 flex justify-between items-center">
+    <header class="w-full bg-gray-800 p-4 flex justify-between items-center fixed top-0 left-0 z-10">
         <button id="sound-btn" class="text-gray-400 hover:text-gray-200 text-xl font-bold px-4 py-2">
             🔊
         </button>
@@ -33,7 +33,7 @@
             ×
         </button>
     </header>
-    <main class="flex-1 flex justify-center items-center p-6">
+    <main class="flex-1 flex justify-center items-center min-h-screen p-6 pt-24">
         <div class="w-full max-w-2xl text-center">
             <h1 class="text-3xl mb-4 font-bold">
                 Next: <span id="next-phase">-</span>
