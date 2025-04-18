@@ -50,7 +50,7 @@
             } else {
                 savedSessions.forEach((session) => {
                     const listItem = document.createElement('li');
-                    listItem.className = 'flex justify-between items-center hover:bg-gray-700 text-lg p-2 rounded transition-colors duration-200';
+                    listItem.className = 'flex justify-between items-center hover:bg-gray-700 text-lg p-2 rounded transition-colors duration-200 select-none';
                     
                     const sessionName = document.createElement('span');
                     sessionName.textContent = session.name;
